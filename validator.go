@@ -31,7 +31,7 @@ func Validate(v any) error {
 	t := reflect.TypeOf(v)
 	var validateErrs ValidationErrors
 
-	err := ValidateType(t) //check struct it is, else return error
+	err := ValidateType(t) //check struct it is, else return err
 	if err != nil {
 		return err
 	}
@@ -49,48 +49,49 @@ func Validate(v any) error {
 			continue
 		}
 
-		var keyVal []string
-		keyVal, err = ParseTagVal(s)
-		if err != nil {
-			validateErrs = append(validateErrs, ValidationError{err})
-			continue
-		}
-		keyTag, valTag := keyVal[0], keyVal[1]
+		for _, s := range strings.Split(s, ";") {
+			var keyVal []string
+			keyVal, err = ParseTagVal(s)
+			if err != nil {
+				validateErrs = append(validateErrs, ValidationError{err})
+				continue
+			}
+			keyTag, valTag := keyVal[0], keyVal[1]
 
-		if valueOfField.Kind() == reflect.Slice {
-			if slice, ok := valueOfField.Interface().([]int); ok {
-				for _, el := range slice {
-					err = ValidateElement(keyTag, valTag, el)
-					if err != nil {
-						validateErrs = append(validateErrs, ValidationError{err})
+			if valueOfField.Kind() == reflect.Slice {
+				if slice, ok := valueOfField.Interface().([]int); ok {
+					for _, el := range slice {
+						err = ValidateElement(keyTag, valTag, el)
+						if err != nil {
+							validateErrs = append(validateErrs, ValidationError{err})
+						}
 					}
 				}
-			}
-			if slice, ok := valueOfField.Interface().([]string); ok {
-				for _, el := range slice {
-					err = ValidateElement(keyTag, valTag, el)
-					if err != nil {
-						validateErrs = append(validateErrs, ValidationError{err})
+				if slice, ok := valueOfField.Interface().([]string); ok {
+					for _, el := range slice {
+						err = ValidateElement(keyTag, valTag, el)
+						if err != nil {
+							validateErrs = append(validateErrs, ValidationError{err})
+						}
 					}
 				}
+				continue
 			}
-			continue
-		}
 
-		var value interface{}
-		switch valueOfField.Type().String() {
-		case reflect.Int.String():
-			value = int(valueOfField.Int())
-		case reflect.String.String():
-			value = valueOfField.String()
-		}
-		err = ValidateElement(keyTag, valTag, value)
-		if err != nil {
-			validateErrs = append(validateErrs, ValidationError{err})
-		}
+			var value interface{}
+			switch valueOfField.Type().String() {
+			case reflect.Int.String():
+				value = int(valueOfField.Int())
+			case reflect.String.String():
+				value = valueOfField.String()
+			}
+			err = ValidateElement(keyTag, valTag, value)
+			if err != nil {
+				validateErrs = append(validateErrs, ValidationError{err})
+			}
 
+		}
 	}
-
 	if len(validateErrs) != 0 {
 		return validateErrs
 	}
